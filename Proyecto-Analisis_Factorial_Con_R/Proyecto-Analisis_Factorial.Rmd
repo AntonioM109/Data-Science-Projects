@@ -1,0 +1,581 @@
+---
+output: pdf_document
+header-includes:
+- \newcommand{\benum}{\begin{enumerate}}
+- \newcommand{\eenum}{\end{enumerate}}
+- \usepackage[framemethod=TikZ]{mdframed}
+- \usepackage{hyperref}
+- \hypersetup{colorlinks, citecolor=black, filecolor=black, linkcolor=black, urlcolor=blue}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(comment = NA)
+library(knitr)
+def_hook <- knit_hooks$get("output")
+knit_hooks$set(output = function(x, options){
+  out <- def_hook(x, options)
+  return(paste("\\begin{mdframed}[roundcorner=5pt,backgroundcolor=gray!15,linewidth=1.5pt]\\begin{verbatim}",                x,"\\end{verbatim}\\end{mdframed}", collapse = "\n"))
+})
+```
+
+\definecolor{shadecolor}{rgb}{0.9,0.9,0.9}
+
+\begin{titlepage}
+\centering
+\vspace{20cm}
+{\bfseries\LARGE ANÁLISIS FACTORIAL PARA DATOS DE RURALIDAD CON R \par}
+\vspace{1cm}
+{\scshape\Large  \par}
+\vspace{3cm}
+{\Large Autor: \par}
+{\Large Luis Antonio Martínez Hernández \par}
+\vfill
+\vfill
+{\Large 16 De Junio, 2022 \par}
+\end{titlepage}
+\tableofcontents
+\newpage
+
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+library(psych)
+```
+
+
+\section{Introducción}
+
+Durante este proyecto de análisis factorial, estaremos trabajando con datos de ruralidad, sin embargo, antes de ello, necesitamos comprender a qué nos referimos con ruralidad, puesto que su concepto y definición pueden llegar a crear confusiones. \textit{La ruralidad es un concepto de moda. Diferentes publicaciones científicas y técnicas, responsables políticos y gremiales utilizan más que nunca este término, debido antes que nada a la emergencia de nuevas formas de vida y nuevas dinámicas de desarrollo en los espacios rurales, a tal punto que aparece en diversos ámbitos el concepto de "nueva ruralidad". Sin embargo, esta idea tan en boga mantiene un alto grado de ambigüedad, lo que genera aún mayor confusión.}
+
+
+\textit{En líneas generales, la ruralidad tiene dos grandes acepciones y usos. La primera acepción, que es la más banal y ampliamente difundida, hace referencia a la ruralidad como "todos los hechos y fenómenos relativos que se suceden en áreas de baja densidad de población vinculada a la producción de bienes primarios o agropecuarios". Esta es una concepción estática que tiene un fuerte carácter demográfico y espacial.}
+
+\textit{La segunda acepción, que es la que consideramos pertinente para abordar en profundidad los procesos de desarrollo rural, define a la ruralidad como "la forma de relación que se establece entre la sociedad y los espacios rurales y a partir de la cual, se construye el sentido social de lo rural, la identidad y se moviliza el patrimonio de dichos espacios".}
+
+\textit{La ruralidad en tanto forma de relación entre el hombre y su espacio y forma de apropiación simbólica, valorización y aprovechamiento del patrimonio, constituye la dimensión social de los territorios rurales. Entendida de esta manera, la ruralidad tiene dos dimensiones que interesa analizar: a) una dimensión subjetiva vinculada a la identidad, y b) una dimensión instrumental ligada a las formas de valorización del patrimonio. Ambas dimensiones son concurrentes al proceso de apropiación y territorialización de los espacios rurales.}
+
+
+Teniendo esta visión más amplia de qué es ruralidad, podemos cambiar el uso de "ruralidad" por "zonas o espacios rurales", así, procedemos a iniciar nuestro análisis factorial, con el fin de reducir las variables originales a un número menor de factores, los cuales nos puedan ayudar a entender mucho mejor aspectos de nuestros datos.
+
+
+\section{1. Datos}
+Aplicaremos un análisis de factores a datos rurales del año 2020, las variables se describen a continuación:
+\begin{tabular}{|l|l|l|l|}
+\hline
+\textbf{Factor}&	\textbf{Subgrupo}&	\textbf{Variable}&	\textbf{Nombre} \\
+\hline
+Social &	Localidad&	LocChi&	Porcentaje de la población que habita en localidades chicas. \\
+Social & 	Localidad&	LocMed&	Porcentaje de la población que habita en localidades medianas.\\
+Social &	Localidad&	LocGra&	Porcentaje de la población que habita en localidades grandes.\\
+Social &	Localidad&	CamPob&	Cambio de población (cambio porcentual de la población).\\
+Social &	Vivienda&	InAgu&	Porcentaje de agua entubada.\\
+Social &	Vivienda&	InEle&	Porcentaje de electricidad.\\
+Social &	Vivienda&	InDre&	Porcentaje de drenaje.\\
+Social &	Vivienda&	MatViv&	Materiales del techo de las viviendas (Porcentaje).\\
+Económico &	Laboral&	PeaDes&	Porcentaje de Población Económicamente Activa desocupada.\\
+Económico &	Laboral&	PeaPrim& \% de pobl. económicamente activa ocupada en el sect. primario.\\
+Económico &	Laboral&	PeaSec&	\% de pobl. económicamente activa ocupada en el sect. secundario.\\
+Económico &	Laboral&	PeaTer&	\% de pobl. económicamente activa ocupada en el sect. terciario.\\
+\hline
+\end{tabular}
+
+Haremos uso de los tres métodos vistos en clase:
+
+- **Método de máxima verosimilitud con y sin rotación.**
+- **Método de factores principales con y sin rotación.**
+- **Método de componentes principales con y sin rotación.**
+
+Los métodos se aplicarán a cada subgrupo de datos: subgrupo Localidad, subgrupo Vivienda y subgrupo Laboral, en ese orden.
+```{r message=FALSE, warning=FALSE, include=FALSE}
+library(readxl)
+ruralidad <- read_excel("2205276baseInRuralidad2020.xlsx")
+head(ruralidad, 20)
+```
+
+
+\newpage
+
+
+\section{2. Subgrupo Localidad}
+
+Empezamos por separar el subgrupo Localidad de la base de datos.
+```{r}
+localidad <- ruralidad[,5:8]
+head(localidad,5)
+```
+
+Calculamos la matriz de correlaciones muestral $\pmb{R}$ para este subgrupo:
+
+```{r}
+R_loc <- cor(localidad); R_loc
+```
+
+
+Ahora, determinamos el número de factores a extraer, solo nos interesarán los factores que tengan un eigenvalue mayor a  1.0 o eigenvalues superiores a los demás.  Una manera de encontrar estos factores es utilizando una \textit{screeplot}, como a continuación se muestra:
+
+
+```{r echo=TRUE, fig.height=3.5, fig.width=7, message=FALSE, warning=FALSE}
+scree(R_loc)
+```
+
+La \textit{screeplot} nos sugiere elegir entre 1 y 2 factores, de este modo, nos decantamos por elegir dos factores, sin embargo, para componentes principales es mejor usar 3 factores ya que tiene eigenvalores más grandes, como se puede ver en la gráfica.  
+  
+```{r include=FALSE}
+R_loc <- cor(round(localidad, 3))
+localidad <- round(localidad, 3)
+```
+  
+\subsection{2.1 Método de Máxima Verosimilitud Sin Rotación}
+
+Aplicamos el método de máxima verosimilitud a los datos del subgrupo Localidad, para ello nos apoyaremos de la librería \texttt{psych} usando la función \texttt{fa()} como a continuación se muestra:
+
+```{r message=FALSE, warning=FALSE}
+library(psych)
+# Aplicamos el método de máx. verosimilitud indicando fm="ml" 
+fit.m1 <- fa(R_loc, nfactors=2, n.iter=1, rotate="none", fm="ml")
+fit.m1
+```
+
+La primera parte de la salida del programa nos muestra los pesos para los dos factores y también nos muestra las comunalidades (\texttt{h2}) y varianzas específicas (\texttt{u2}).  
+Para el primer factor se obtiene un gran peso negativo para la variable $LocChi$ (porcentaje de población en localidades chicas) y pesos positivos aunque no tan grandes para $LocMed$ (porcentaje en localidades medianas), $LocGra$ (porcentaje en localidades grandes) y $CamPob$ (cambio porcentual de la población). Podemos decir, que el primer factor contrasta la característica esencial de un espacio rural (el de localidades chicas) con el de características que no son propias de un espacio rural, a excepción de $CamPob$ que no influye en gran medida.  
+Para el segundo factor obtenemos pesos grandes en $LocMed$ y $LocGra$ a diferencia de $LocChi$ y $CamPob$ que tienen pesos muy bajos, de este modo, podemos decir que el segundo factor influye más en características contrarias a las de rural. En ambos casos, el cambio de población ($CamPob$) no es muy influyente, por lo que podemos decir que no está relacionado en gran medida con lo rural.
+
+
+
+\newpage
+
+\subsection{2.2 Método de Máxima Verosimilitud Con Rotación}
+
+Aplicamos el método de máxima verosimilitud junto \textbf{con el método de rotación varimax} a los datos del subgrupo Localidad como a continuación se muestra:
+
+```{r message=FALSE, warning=FALSE}
+# Aplicamos el método de máx. verosimilitud indicando fm="ml" y rotacion varimax
+fit.m1.rot <- fa(R_loc, nfactors=2, n.iter=1, rotate="varimax", fm="ml")
+fit.m1.rot
+```
+
+
+Aplicando la rotación \textbf{varimax} vemos que los pesos cambian con respecto al modelo sin rotar. En el modelo \textbf{con rotación}, para el primer factor, las variables en las que más se influyen son Localidades grandes ($LocGra$) y Localidades chicas ($LocChi$), con signo contrario, es decir, que el factor contrasta una zona rural tomando como caracteristica las localidades chicas, con zonas no rurales las cuales se caracterizan por localidades grandes.  
+Para su segundo factor, sucede algo parecido, pero esta vez contrastanto las localidades chicas con las medianas, ya que son las variables con más peso y con signo contrario, podemos decir, que lo rural toma como exclusivas las localidades chicas, dejando a un lado las localidades de mayor tamaño.  
+En ambos factores, el cambio de población ($CamPob$) no parece ser relevante a la hora de determinar lo rural. Las interpretaciones que se dieron en el modelo \textbf{sin rotar} fueron parecidas, aunque la interpretación para el segundo factor cambió ya que los pesos de mayor tamaño fueron para $LocMed$ y $LocGra$ (en ese caso, el factor influye más en las características de no rural).
+
+
+
+
+
+
+
+
+
+\newpage
+
+\subsection{2.3 Método de Factores Principales Sin Rotación}
+
+Ahora, aplicaremos el análisis de factores usando el método de factores principales, para ello, realizaremos una estimación inicial de las comunalidades haciendo una regresión de cada variable sobre el resto de ellas y obteniendo la comunalidad de una variable mediante el coeficiente de determinación. Creamos una función que nos calcule los pesos factoriales de esta forma:
+
+```{r message=FALSE, warning=FALSE}
+# Creamos la función para los pesos
+fact.r2 <- function(data, nfact, iter){
+  R <- cor(data); h2j <- c()
+  for (i in 1:ncol(data)) {
+    formula <- paste(names(data)[i], "~.", sep=" ")
+    h2j <- c(h2j, summary(lm(formula, data))$r.squared)
+  }
+  for (i in 1:iter) {
+    Psi <- diag(1-h2j); QQt <- R-Psi; E <- svd(QQt)
+    Q <- (E$u%*%diag(sqrt(E$d)))[,1:nfact]
+    if (i < iter) {if (nfact==1) {h2j <- Q**2} else {h2j <- rowSums((Q**2))}}
+  }
+  return(list(Q_hat=Q,h2_hat=h2j,Var_esp=diag(Psi),lambda=E$d,Psi_hat=Psi))
+}
+# Aplicamos la función para el subgrupo Localidad usando 5 iteraciones
+fit.m2 <- fact.r2(localidad, 2, 5)
+# Función para mostrar resultados
+table1<- function(model, data, k,p){lambda=model$lambda;Q_hat<-data.frame(q=model$Q_hat)
+  t1 <- cbind(round(Q_hat,2),round(cbind(Communalities=model$h2_hat,
+                                         Specific_Var=model$Var_esp),4))
+  t1 <- as.data.frame(cbind(Variables=names(data), t1))
+  t2 <- as.data.frame(rbind(Eigenvalues=lambda[1:k], Proportion_Var=lambda[1:k]/p,
+                            Cumulative_Var = cumsum(lambda[1:k]/p)))
+  names(t2) <-  colnames(Q_hat); return(list(t1 = t1, t2=t2))
+}
+# Cargas factoriales estimadas, comunalidades y varianzas específicas
+table1(fit.m2, localidad, k=2, p=4)
+```
+
+Obtenemos resultados aproximandamente iguales que con el método de máxima verosimilitud \textbf{sin rotación}, y por ende, las mismas interpretaciones; hemos de notar que la proporción acumulada de la varianza es de 75% lo cual es un proporción aceptable tomando en cuenta que solo son 2 factores los que se utilizaron. Además, las comunalidades son iguales a 1 en las tres primeras variables, que, como ya mencionamos, toman un papel importante a la hora de separar lo rural y lo no rural, a excepción de la última variable $CamPob$, la cual no es tan determinante como las demás.
+
+
+\newpage
+
+\subsection{2.4 Método de Factores Principales Con Rotación}
+
+Ahora, aplicaremos el método de factores principales junto \textbf{con el método de rotación varimax} usando \textbf{2 factores}, nos apoyaremos de la librería \texttt{psych}:
+
+```{r message=FALSE, warning=FALSE}
+# Aplicamos el método de factores princ. indicando fm="paf" y rotacion varimax
+fit.m2.rot <- fa(R_loc, nfactors=2, n.iter=1, rotate="varimax", fm="paf")
+fit.m2.rot
+```
+
+Notemos que los resultados son iguales a los obtenidos con el método de verosimilitud \textbf{con rotación}, por lo tanto, mantenemos las interpretaciones. Además, las comunalidades y la varianza acumulada se mantienen sin cambios en los modelos \textbf{sin rotar} y \textbf{con rotación}.
+
+
+\newpage
+
+\subsection{2.5 Método de Componentes Principales Sin Rotación}
+
+Por último, aplicaremos el método de componentes principales \textbf{sin rotación}. Sin embargo, a diferencia de los modelos anteriores, esta vez usaremos \textbf{3 factores} en lugar de 2. Creamos una función para realizar este método y lo aplicamos:
+
+```{r message=FALSE, warning=FALSE}
+# Localidad Componentes Principales
+fact.comp <- function(R, k){
+  Eigen <- svd(R)
+  Q_hat <- ((Eigen$u)%*%diag(sqrt(c(Eigen$d))))[,1:k]
+  if (k==1) {h2_hat <- Q_hat**2} else {h2_hat <- rowSums((Q_hat**2))}
+  Psi_hat <- diag(1-h2_hat)
+  return(list(Q_hat=Q_hat,h2_hat=h2_hat,Var_esp=diag(Psi_hat),
+              lambda=Eigen$d,Psi_hat=Psi_hat))
+}
+# Aplicamos la función para el subgrupo Localidad usando la función creada
+fit.m3 <- fact.comp(R_loc, 3)
+# Cargas factoriales estimadas, comunalidades y varianzas específicas
+table1(fit.m3, localidad, k=3, p=4)
+```
+
+Para Componentes Principales, usando 2 factores obtuvimos resultados parecidos a los otros métodos \textbf{sin rotar}, sin embargo, usando 3 factores, la variable $CamPob$ toma muchísima más importancia que con los otros métodos (ya que también se probó usar 3 factores), y esto es muy notable en las comunalidades, las cuales son iguales a 1 en las 4 variables.  
+  
+Los dos primeros factores siguen teniendo una interpretación similar a la que se hizo en el inicio, sin embargo, para el tercer factor, todo el peso cae en la variable de cambio de población ($CamPob$), dejando de ser relevantes las demás variables, dándonos a entender que el tercer factor solo tomará en cuenta a esta variable. Además, la proporción acumulada de la varianza llega a ser exactamente 1, por lo que para el método de componentes principales, usar 3 factores es mucho mejor que usar solo 2 como en los anteriores modelos.
+
+
+
+
+\newpage
+
+\subsection{2.6 Método de Componentes Principales Con Rotación}
+
+Por último, aplicaremos el método de componentes principales \textbf{con rotación varimax} y \textbf{3 factores}. 
+
+```{r message=FALSE, warning=FALSE}
+# Aplicamos el método de componentes principales y rotacion varimax con 3 factores
+fit.m3.rot <- principal(R_loc, nfactors=3, rotate="varimax")
+fit.m3.rot
+```
+
+
+El primer factor contrasta las localidades chicas ($LocChi$) (que son comúnes en una zona rural) con localidades medianas ($LocMed$), ya que son las de mayor peso y signo contrario. El segundo factor, tiene más influencia en las localidades chicas y las grandes, y como tienen signo contrario podemos decir, que se contrastan para diferenciar un zona rural y una no rural, esto pasó de manera similar en los dos primeros factores del modelo \textbf{sin rotar}, donde la diferencia principal se tomaba de las localidades chicas contrastando con las demás variables. El tercer factor tiene una interpretación igual a la que se hizo en el modelo \textbf{sin rotar}, es decir, el factor describe el cambio de población ($CamPob$) ya que es el de mayor peso el cual no había sido relevante en los primeros dos factores.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+\newpage
+
+\section{3. Subgrupo Vivienda}
+
+Separamos el subgrupo Vivienda de la base de datos.
+```{r}
+vivienda <- ruralidad[,9:12]
+head(vivienda, 5)
+```
+
+Calculamos la matriz de correlaciones muestral $\pmb{R}$ para este subgrupo:
+
+```{r}
+R_viv <- cor(vivienda); R_viv
+```
+
+Ahora, determinamos el número de factores a extraer utilizando una \textit{screeplot}:
+
+
+```{r echo=TRUE, fig.height=3.5, fig.width=7, message=FALSE, warning=FALSE}
+scree(R_viv)
+```
+
+La \textit{screeplot} nos sugiere elegir 1 factor, sin embargo, para componentes principales es mejor usar 3 factores ya que sus eigenvalores son un poco más grandes, como se puede ver en la gráfica.   
+
+
+\subsection{3.1 Método de Máxima Verosimilitud Sin Rotación}
+
+Aplicamos el método de máxima verosimilitud a los datos del subgrupo Vivienda, para ello nos apoyaremos de la librería \texttt{psych} usando la función \texttt{fa()} como a continuación se muestra:
+
+```{r message=FALSE, warning=FALSE}
+# Aplicamos el método de máx. verosimilitud indicando fm="ml" y solo 1 factor
+fit.m1 <- fa(R_viv, nfactors=1, n.iter=1, rotate="none", fm="ml")
+fit.m1
+```
+
+La primera parte de la salida del programa nos muestra los pesos para el único factor y también nos muestra las comunalidades (\texttt{h2}) y varianzas específicas (\texttt{u2}).  
+Obtenemos pesos positivos para cada una de las variables, $inagu$ (porcentaje de agua entubada), $inelec$ (porcentaje de electricidad), $indre$ (porcentaje de drenaje) y $MatViv$ (materiales del techo de las viviendas), los pesos son muy parecidos en cada variable, aunque, es más sobresaliente para el porcentaje de drenaje ($indre$), es decir, el factor equilibra las variables, inclinándose un poco más al drenaje para caracterizar un espacio no rural, puesto que en estas zonas es más común ver este tipo de infraestructura que en zonas rurales.
+
+
+
+\newpage
+
+\subsection{3.2 Método de Máxima Verosimilitud Con Rotación}
+
+Nuevamente aplicamos el método de verosimilitud, esta vez con \textbf{con rotación varimax}:
+
+```{r message=FALSE, warning=FALSE}
+library(psych)
+# Aplicamos el método de máx. verosimilitud indicando fm="ml" y rotacion varimax
+fit.m1.rot <- fa(R_viv, nfactors=1, n.iter=1, rotate="varimax", fm="ml")
+fit.m1.rot
+```
+
+
+Vemos que los resultados son los mismos para el modelo con rotación y el modelo sin rotar. Esto se debe a que solo se ocupó un solo factor. De este modo, las interpretaciones son las mismas.
+
+
+
+\newpage
+
+\subsection{3.3 Método de Factores Principales Sin Rotación}
+
+Ahora, aplicaremos el análisis de factores usando el método de factores principales sin rotar. 
+
+```{r}
+# Aplicamos la función para el subgrupo Vivienda usando la función creada
+# en el problema de Localidad, con 1 factor y 10 iteraciones
+fit.m2 <- fact.r2(vivienda, 1, 10)
+# Cargas factoriales estimadas, comunalidades y varianzas específicas
+table1(fit.m2, vivienda, k=1, p=4)
+```
+
+Los resultados para este método son aproximadamente iguales a los obtenidos con el método de verosimilud con y sin rotación, aunque el signo para los pesos es negativo en todas las variables, la interpretación sigue siendo la misma, teniendo a la variable $indre$ como la más influyente. Además, en las comunalidades también se puede ver que el porcentaje de drenaje tiene un valor mayor que el de las demás. La proporción de la varianza que explica este factor es de 38.2% que, pese a que no es mucho, sí es significativa que si se usa más de un factor (ya que se probó usar más de dos factores pero los resultados no cambiaron en gran medida y nos decantamos por usar solo un factor).
+
+
+\newpage
+
+\subsection{3.4 Método de Factores Principales Con Rotación}
+Ahora aplicamos el método con la rotación varimax:
+
+```{r message=FALSE, warning=FALSE}
+# Aplicamos el método de factores princ. indicando fm="paf" y rotacion varimax
+fit.m2.rot <- fa(R_viv, nfactors=1, n.iter=1, rotate="varimax", fm="paf")
+fit.m2.rot
+```
+
+
+Obtenemos los mismos resultados que en los modelos anteriores y las mismas interpretaciones.
+
+\newpage
+
+\subsection{3.5 Método de Componentes Principales Sin Rotación}
+
+Ahora, aplicaremos el método de componentes principales usando la función definida en el problema anterior de Localidad, además, en este caso se usarán tres factores a diferencia de los métodos anteriores:
+
+```{r}
+# Aplicamos la función para el subgrupo Vivienda usando la función creada
+# Usando 3 factores
+fit.m3 <- fact.comp(R_viv, 3)
+
+# Cargas factoriales estimadas, comunalidades y varianzas específicas
+table1(fit.m3, vivienda, k=3, p=4)
+```
+
+Para componentes principales sin rotar, se usaron tres factores, en donde, para el primer factor obtenemos pesos con un patrón similar a los de los métodos de verosimilitud y de factores principales, de este modo, podemos mantener la interpretación para este factor, en el cual se le da mucha más prioridad a el drenaje a comparación de las demás variables que se mantienen en un rango parecido.  
+Para el segundo factor, obtenemos pesos positivos para el porcentaje de agua ($inagu$) y electricidad ($inelec$), y pesos negativos para el porcentaje de drenaje ($indre$) y materiales del techo ($MatViv$). Notemos que en este segundo factor, los pesos de mayor magnitud son para el porcentaje de agua ($inagu$) y el de materiales del techo ($MatViv$), con signos contrarios.  
+Entonces, podemos interpretar que para una zona rural, el porcentaje de agua es esencial y determinante, puesto que en México varias zonas rurales se ubican en el sur, donde el agua es abundante, y esto, es contrastado con los materiales de vivienda, ya que, por lo general, en las zonas rurales no se cuentan con techos de buena calidad e incluso se ocupan techos con materiales improvisados.  
+Para el tercer factor, vemos que la variable de mayor influencia es de la electricidad ($inelec$), esto nos da un indicio de que el factor divide zonas rurales y no rurales de acuerdo a la electricidad, ya que por lo general, en lo zonas rurales se carece de este servicio, a diferencia de las no rurales.
+La proporción acumulada de la varianza llega hasta un 87% que es mucho más de lo que obtuvimos con los modelos anteriores.
+
+
+
+\newpage
+
+\subsection{3.6 Método de Componentes Principales Con Rotación}
+
+El método con rotación arroja los siguientes resultados:
+
+```{r message=FALSE, warning=FALSE}
+# Aplicamos el método de componentes principales y rotacion varimax con 3 factores
+fit.m3.rot <- principal(R_viv, nfactors=3, rotate="varimax")
+fit.m3.rot
+```
+
+Para el primer factor del modelo \textbf{con rotación} los pesos más grandes son para $indre$ y $MatViv$ (que corresponden al drenaje y al material del techo de la vivienda, respectivamente), entonces, se puede decir que el primer factor describe las características de una zona no rural, donde el drenaje y el material de la vivienda son de mejor calidad que en las zonas rurales (esta interpretación es parecida a la del modelo sin rotación donde se le dió más prioridad al drenaje). El segundo factor es claramente influenciado por la primer variable, la del agua (similar al modelo sin rotar), ya que los pesos para las demás variables son mucho más bajas, entonces, podemos interpretar que para una zona rural, el porcentaje de agua es esencial y determinante. Para el tercer factor, el peso de mayor magnitud es el de la electricidad ($inelec$) y es lo mismo que pasa en el modelo sin rotar, de este modo, el tercer factor divide zonas rurales y no rurales de acuerdo a la electricidad.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+\newpage
+
+\section{4. Subgrupo Laboral}
+
+Empezamos por separar el subgrupo Laboral de la base de datos.
+```{r}
+laboral <- ruralidad[,13:16]
+head(laboral,5)
+```
+
+Calculamos la matriz de correlaciones muestral $\pmb{R}$ para este subgrupo:
+
+```{r}
+R_lab <- cor(laboral); R_lab
+```
+
+Ahora, determinamos el número de factores a extraer utilizando una \textit{screeplot}:
+
+
+```{r echo=TRUE, fig.height=3.5, fig.width=7, message=FALSE, warning=FALSE}
+scree(R_lab)
+```
+
+La \textit{screeplot} nos sugiere elegir entre 1 y 2 factores, de este modo, nos decantamos por elegir dos factores, sin embargo, para componentes principales es mejor usar 3 factores ya que tiene eigenvalores más grandes, como se puede ver en la gráfica. 
+
+
+```{r include=FALSE}
+R_lab <- cor(round(laboral, 3))
+laboral <- round(laboral, 3)
+```
+
+\subsection{4.1 Método de Máxima Verosimilitud Sin Rotación}
+
+Aplicamos el método de máxima verosimilitud sin rotar a los datos del subgrupo Laboral como a continuación se muestra:
+
+```{r message=FALSE, warning=FALSE}
+# Aplicamos el método de máx. verosimilitud indicando fm="ml" y 2 factores
+fit.m1 <- fa(R_lab, nfactors=2, n.iter=1, rotate="none", fm="ml")
+fit.m1
+```
+
+
+En el primer factor, las dos primeras variables $PeaDes$ (% población economic. activa desocupada) y $PeaPrim$ (% población económic. activa sector primario) tienen pesos negativos aunque $PeaDes$ tiene un peso no significativo; las dos últimas variables $PeaSec$ (% población económic. activa sector secundario) y $PeaTer$ (% población económic. activa sector terciario) tienen pesos positivos y significativos. Entonces, podemos interpretar el factor 1 como el contraste entre la población ocupada en el sector primario ($PeaPrim$) y la población ocupada en el sector secundario y terciario ($PeaSec$ y $PeaTer$), lo cual es lógico ya que en una zona rural es común que las personas se dediquen al sector primario en comparación con zonas no rurales donde es más frecuente que se dediquen al sector secundario o terciario.  
+Para el segundo factor tenemos que las variables de mayor peso son las dos últimas ($PeaSec$ y $PeaTer$) con signos contrarios, y esto puede significar un contraste entre ambos, es decir, en zonas no rurales, las diferencias pueden estar marcadas por el porcentaje de la población que se dedique al sector secundario o el terciario, pues puede haber lugares donde el desarrollo del sector secundario es mayor que el sector terciario y viceversa. 
+
+
+
+```{r include=FALSE}
+R_lab <- cor(laboral)
+```
+
+\newpage
+
+\subsection{4.2 Método de Máxima Verosimilitud Con Rotación}
+
+Luego, el método con rotación:
+
+```{r message=FALSE, warning=FALSE}
+library(psych)
+# Aplicamos el método de máx. verosimilitud indicando fm="ml" y rotacion varimax
+fit.m1.rot <- fa(R_lab, nfactors=2, n.iter=1, rotate="varimax", fm="ml")
+fit.m1.rot
+```
+
+Para el modelo \textbf{con rotación}, el primer factor obtiene pesos grandes y con signos contrarios para las variables $PeaPrim$ y $PeaTer$ (que representan a la población activa en el sector primario y terciario, respectivamente), similar a lo que pasa en el modelo sin rotar, entonces, podemos interpretar el factor 1 como el contraste entre la población ocupada en el sector primario y la población ocupada en el sector terciario, separando una zona rural, donde las personas se dedican al sector primario, de una zona no rural, donde se dedican al sector terciario. Para el segundo factor, tenemos que la variable con más peso es la del sector secundario, de este modo, el factor 2 se centra en caracterizar solo a la población no rural que se dedica al sector secundario.
+
+\newpage
+
+
+
+
+\subsection{4.3 Método de Factores Principales Sin Rotación}
+
+Aplicaremos el método de factores principales primero sin rotar:
+
+```{r}
+# Aplicamos la función para el subgrupo Laboral usando la función creada
+# en el problema de Localidad, con 2 factores y 10 iteraciones
+fit.m2 <- fact.r2(laboral, 2, 10)
+# Cargas factoriales estimadas, comunalidades y varianzas específicas
+table1(fit.m2, laboral, k=2, p=4)
+```
+
+Los resultados para este método son aproximadamente iguales a los obtenidos con el método de verosimilud \textbf{sin rotación}, por ende, podemos mantener las interpretaciones ya hechas. Además, en ambos factores, el porcentaje de población economicamente activa desocupada ($PeaDes$) no es significativo, por lo cual, no es determinante para definir un espacio rural, esto es muy notable en las comunalidades de las variables, en donde se tienen valores grandes excepto para la primera. Hemos de notar que la proporción acumulada de la varianza es de 75% lo cual es un proporción aceptable tomando en cuenta que solo son 2 factores los que se utilizaron.
+
+
+\newpage
+
+\subsection{4.4 Método de Factores Principales Con Rotación}
+
+El método de factores principales con rotación:
+
+```{r message=FALSE, warning=FALSE}
+# Aplicamos el método de factores princ. indicando fm="paf" y rotacion varimax
+fit.m2.rot <- fa(R_lab, nfactors=2, n.iter=1, rotate="varimax", fm="paf")
+fit.m2.rot
+```
+
+Los resultados para este método son aproximadamente iguales a los obtenidos con el método de verosimilud \textbf{con rotación}, por ende, podemos mantener las interpretaciones ya hechas.
+
+\newpage
+
+\subsection{4.5 Método de Componentes Principales Sin Rotación}
+
+Aplicaremos el método de componentes principales sin rotar, además, en este caso se usarán tres factores a diferencia de los modelos anteriores:
+
+```{r}
+# Aplicamos la función para el subgrupo Laboral usando la función creada
+# Usando tres factores
+fit.m3 <- fact.comp(R_lab, 3)
+# Cargas factoriales estimadas, comunalidades y varianzas específicas
+table1(fit.m3, laboral, k=3, p=4)
+```
+
+Para los componentes principales, obtenemos pesos en el factor 1 practicamente iguales a los de los métodos \textbf{sin rotar} anteriores, de este modo, podemos mantener la interpretación ya realizada.  
+Para el factor 2, la variable con el peso de mayor magnitud es para el porcentaje de la población economicamente activa desocupada ($PeaDes$), las demás variables tienen pesos menos significativos, de este modo, el segundo factor caracteriza a la población desocupada.  
+Para el factor 3, obtenemos pesos similares obtenidos a los pesos en el factor 2 de los modelos sin rotación anteriores, entonces, la interpretación es similar, es decir, las variables de mayor peso son las dos últimas ($PeaSec$ y $PeaTer$) con signos contrarios, y esto puede significar un contraste entre ambos para zonas no rurales.  
+También notemos que las comunalidades son iguales a 1 en las cuatro variables, además,  la proporción acumulada de la varianza es igual a 1, lo que es muy significativo a comparación de los métodos anteriores.
+
+
+
+\newpage
+
+\subsection{4.6 Método de Componentes Principales Con Rotación}
+
+Por último, el método de componentes principales pero con rotación varimax.
+
+```{r message=FALSE, warning=FALSE}
+# Aplicamos el método de componentes principales y rotacion varimax con 3 factores
+fit.m3.rot <- principal(R_lab, nfactors=3, rotate="varimax")
+fit.m3.rot
+```
+
+En el factor 1, las variables con más pesos son $PeaPrim$ y $PeaTer$, lo cual obtuvimos en los modelos \textbf{con rotación} anteriores, entonces, podemos mantener la interpretación, es decir, el factor 1 contrasta la población ocupada en el sector primario (común en zonas rurales) y la población ocupada en el sector terciario (común en zonas no rurales), esto es parecido a lo que resultó en el modelo sin rotación.  
+El segundo factor (el cual es \texttt{RC2} pero está en la tercer columna), tenemos el mayor peso en la primer variable ($PeaDes$), lo cual coincide con lo que se obtuvo en el modelo sin rotar, de este modo, el factor 2 caracteriza a la población desocupada.  
+El tercer factor (el cual es \texttt{RC3} pero está en la segunda columna), se tiene el peso más grande en la variable $PeaSec$ (también es la variable con mayor peso del factor 3 en el modelo sin rotar), por tanto, el factor 3 se centra en caracterizar solo a la población no rural que se dedica al sector secundario.
+
+
+\newpage
+
+\section{5. Conclusiones}
+
+Haciendo una observación general a los distintos modelos ajustados, vemos que, para los tres subgrupos, el método de componentes principales ayudó a que se tuviera una buena comprensión de las cualidades que conforman un espacio rural y las que lo diferencian de un espacio no rural, ya que fue el modelo el cual tuvo interpretaciones similares a los otros métodos pero también con una mejor proporción acumulada de la varianza (en los tres caso mayores al 80%) y con comunalidades muy altas; sin embargo, también hay que dar crédito a los métodos de verosimilitud y de factores principales, ya que otorgaron una buena interpretación haciendo uso solamente de 2 factores e incluso 1 (en el caso del subgrupo Vivienda), mientras que el método de componentes usó 3 factores en todos los casos.  
+También, dando un resúmen de los análisis, se puede decir que en una zona o espacio rural tiende a caracterizarse por tener localidades chicas las cuales carecen de servicios como el drenaje y la electricidad, también es en estas zonas donde la población, por lo general, se dedica al sector primario (actividades agrícolas, pecuarias, silvícolas, etc.).
+
+
+
+\section{6. Referencias Bibliográficas}
+
+- Méndez, Roberto. (2009). ¿Qué es la ruralidad?. ACAbase: La Cooperación. Recuperado de http://portal.acabase.com.ar/lacooperacion/Lists/EntradasDeBlog/Post.aspx?ID=128.
+
+- Prado, L. N. (1995). Introducción. Lo rural y la ruralidad: algunas reflexiones teóricometodológicas. El Colegio de Michoacán. Recuperado de https://www.colmich.edu.mx/relaciones25/files/revistas/054/LuzNereidaPerezPrado.pdf.
+
+
